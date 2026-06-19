@@ -1,0 +1,418 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<meta name="apple-mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-title" content="may — partner"/>
+<link rel="manifest" href="manifest.json"/>
+<title>may · dashboard 💚</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
+<style>
+:root{
+  --bg:#080f0a;--bg2:#0d1810;
+  --sf:rgba(255,255,255,0.04);--sf2:rgba(255,255,255,0.07);
+  --bd:rgba(255,255,255,0.07);
+  --g1:#4ade80;--g2:#22c55e;--g3:#16a34a;
+  --sun:#fbbf24;--peach:#fb923c;--red:#f87171;
+  --tx:#e8f5ec;--tx2:#8fba9f;--tx3:#4a7a5a;
+  --r-sm:10px;--r-md:16px;--r-lg:22px;--r-xl:28px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{height:100%}
+body{
+  min-height:100vh;background:var(--bg);
+  font-family:-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',system-ui,sans-serif;
+  -webkit-font-smoothing:antialiased;color:var(--tx);
+}
+
+/* grid bg */
+body::before{content:'';position:fixed;inset:0;z-index:0;pointer-events:none;
+  background-image:linear-gradient(rgba(74,222,128,0.025) 1px,transparent 1px),linear-gradient(90deg,rgba(74,222,128,0.025) 1px,transparent 1px);
+  background-size:44px 44px}
+body::after{content:'';position:fixed;inset:0;z-index:0;pointer-events:none;
+  background:radial-gradient(ellipse 700px 500px at 15% 5%,rgba(74,222,128,0.06),transparent),
+             radial-gradient(ellipse 400px 400px at 85% 85%,rgba(251,191,36,0.04),transparent)}
+
+/* ── LAYOUT ─────────────────────────────── */
+.wrap{position:relative;z-index:1;max-width:1140px;margin:0 auto;padding:0 22px}
+header{padding:22px 0 18px;border-bottom:1px solid var(--bd);margin-bottom:26px}
+.h-inner{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px}
+.logo{display:flex;align-items:center;gap:14px}
+.logo-ic{width:44px;height:44px;border-radius:14px;background:linear-gradient(135deg,#4ade80,#22c55e);display:flex;align-items:center;justify-content:center;font-size:22px;box-shadow:0 4px 20px rgba(74,222,128,0.3)}
+.logo h1{font-size:18px;font-weight:600;letter-spacing:-.3px;color:var(--tx)}
+.logo h1 span{color:var(--g1)}
+.logo sub{font-size:11px;color:var(--tx3);font-weight:400;display:block;margin-top:1px}
+.hbar{display:flex;align-items:center;gap:14px}
+.spill{display:flex;align-items:center;gap:6px;padding:6px 13px;border-radius:20px;font-size:12px;font-weight:600;border:1px solid var(--bd);background:var(--sf)}
+.spill .dot{width:7px;height:7px;border-radius:50%}
+.dot-on{background:var(--g1);box-shadow:0 0 8px rgba(74,222,128,0.5);animation:pg 2s infinite}
+.dot-off{background:var(--red)}
+@keyframes pg{0%,100%{opacity:1}50%{opacity:.4}}
+.lsync{font-size:11px;color:var(--tx3)}
+
+/* ── SOS BANNER ─────────────────────────── */
+.sos-ban{display:none;padding:14px 20px;border-radius:var(--r-md);background:linear-gradient(135deg,rgba(248,113,113,0.12),rgba(251,146,60,0.08));border:1px solid rgba(248,113,113,0.3);align-items:center;gap:14px;margin-bottom:22px;animation:bpulse 1.5s ease-in-out infinite}
+.sos-ban.show{display:flex}
+@keyframes bpulse{0%,100%{border-color:rgba(248,113,113,0.3)}50%{border-color:rgba(248,113,113,0.65)}}
+.sos-ban-ico{font-size:28px}
+.sos-ban-txt h3{font-size:15px;font-weight:700;color:#f87171;margin-bottom:2px}
+.sos-ban-txt p{font-size:13px;color:var(--tx2)}
+.sos-ban-t{margin-left:auto;font-size:11px;color:var(--tx3);white-space:nowrap}
+
+/* ── STAT CARDS ─────────────────────────── */
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:15px;margin-bottom:26px}
+.sc{padding:20px;border-radius:var(--r-lg);background:var(--sf);border:1px solid var(--bd);position:relative;overflow:hidden;transition:background .2s,border-color .2s}
+.sc:hover{background:var(--sf2);border-color:rgba(74,222,128,0.2)}
+.sc::before{content:'';position:absolute;inset:0;background:linear-gradient(135deg,rgba(74,222,128,0.03),transparent);pointer-events:none}
+.sc-lbl{font-size:10px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--tx3);margin-bottom:10px;display:flex;align-items:center;gap:6px}
+.sc-lbl svg{width:13px;height:13px;stroke:currentColor;fill:none;stroke-width:2}
+.sc-val{font-size:38px;font-weight:200;letter-spacing:-2px;line-height:1;margin-bottom:6px}
+.sc-sub{font-size:12px;color:var(--tx2)}
+.sc-emo{font-size:46px;line-height:1}
+.cg{color:var(--g1)}.cs{color:var(--sun)}.cr{color:var(--red)}.cp{color:#a78bfa}
+
+/* anx needle */
+.axm{height:5px;border-radius:3px;margin-top:10px;background:linear-gradient(to right,var(--g1),var(--sun),var(--red));position:relative}
+.axn{position:absolute;top:-5px;width:14px;height:14px;border-radius:50%;background:white;border:3px solid var(--g1);transform:translateX(-50%);transition:left .5s ease;box-shadow:0 0 10px rgba(74,222,128,0.5)}
+
+/* ── MAIN GRID ──────────────────────────── */
+.mg{display:grid;grid-template-columns:1fr 360px;gap:20px;align-items:start}
+@media(max-width:900px){.mg{grid-template-columns:1fr}}
+
+/* ── PANELS ─────────────────────────────── */
+.pan{border-radius:var(--r-lg);background:var(--sf);border:1px solid var(--bd);overflow:hidden}
+.pan-h{padding:17px 20px;border-bottom:1px solid var(--bd);display:flex;align-items:center;justify-content:space-between}
+.pan-h h2{font-size:13px;font-weight:600;letter-spacing:.02em;display:flex;align-items:center;gap:8px;color:var(--tx)}
+.pan-h h2 svg{width:15px;height:15px;stroke:var(--g1);fill:none;stroke-width:2}
+.pan-h h2 .ic{font-size:16px}
+.badge{padding:3px 10px;border-radius:12px;font-size:11px;font-weight:600;background:rgba(74,222,128,0.1);color:var(--g1)}
+.pan-b{padding:18px}
+
+/* ── CHART ──────────────────────────────── */
+.ch-wrap{position:relative;height:230px}
+.ctabs{display:flex;gap:5px;margin-bottom:14px}
+.ctab{padding:5px 11px;border-radius:8px;font-size:11px;font-weight:700;border:none;cursor:pointer;background:transparent;color:var(--tx3);transition:all .15s;font-family:inherit}
+.ctab.on{background:rgba(74,222,128,0.12);color:var(--g1)}
+
+/* ── FEED ───────────────────────────────── */
+.feed{display:flex;flex-direction:column;gap:2px;max-height:450px;overflow-y:auto}
+.feed::-webkit-scrollbar{width:3px}
+.feed::-webkit-scrollbar-thumb{background:var(--bd);border-radius:2px}
+.fe{padding:11px 13px;border-radius:var(--r-md);display:flex;align-items:flex-start;gap:11px;transition:background .15s}
+.fe:hover{background:var(--sf2)}
+.fe.sos{background:rgba(248,113,113,0.06);border:1px solid rgba(248,113,113,0.12)}
+.fe-emo{font-size:24px;flex-shrink:0;width:34px;text-align:center}
+.fe-info{flex:1;min-width:0}
+.fe-top{display:flex;align-items:center;gap:7px;margin-bottom:2px;flex-wrap:wrap}
+.fe-mood{font-size:13px;font-weight:500;color:var(--tx)}
+.fe-chip{padding:2px 8px;border-radius:7px;font-size:10px;font-weight:700}
+.fe-dt{font-size:10px;color:var(--tx3);margin-left:auto;white-space:nowrap}
+.fe-note{font-size:12px;color:var(--tx2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.fe-empty{padding:36px 16px;text-align:center;color:var(--tx3);font-size:13px}
+
+.ftabs{display:flex;gap:5px;margin-bottom:14px}
+.ftab{padding:5px 11px;border-radius:8px;font-size:11px;font-weight:700;border:none;cursor:pointer;background:transparent;color:var(--tx3);transition:all .15s;font-family:inherit}
+.ftab.on{background:rgba(74,222,128,0.12);color:var(--g1)}
+
+/* ── EMO BARS ───────────────────────────── */
+.epi{display:flex;flex-direction:column;gap:9px}
+.epi-row{display:flex;align-items:center;gap:9px}
+.epi-e{font-size:18px;width:24px;text-align:center;flex-shrink:0}
+.epi-info{flex:1}
+.epi-top{display:flex;justify-content:space-between;font-size:11px;color:var(--tx2);margin-bottom:4px}
+.epi-bar-bg{height:4px;border-radius:2px;background:rgba(255,255,255,0.06)}
+.epi-bar{height:100%;border-radius:2px;background:linear-gradient(90deg,var(--g1),#fbbf24);transition:width .6s ease}
+
+/* ── MEMORIES SIDE ──────────────────────── */
+.msl{display:flex;flex-direction:column;gap:9px}
+.msi{display:flex;align-items:center;gap:11px;padding:9px 11px;border-radius:var(--r-sm);background:var(--sf2);transition:background .15s}
+.msi:hover{background:rgba(255,255,255,0.1)}
+.msth{width:46px;height:46px;border-radius:10px;overflow:hidden;flex-shrink:0;background:linear-gradient(135deg,rgba(74,222,128,0.15),rgba(251,191,36,0.1));display:flex;align-items:center;justify-content:center;font-size:20px}
+.msth img{width:100%;height:100%;object-fit:cover}
+.msi-inf p{font-size:13px;font-weight:500;color:var(--tx);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:210px}
+.msi-inf span{font-size:10px;color:var(--tx3)}
+
+/* ── RT DOT ─────────────────────────────── */
+.rtdot{display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--g1);margin-right:6px;box-shadow:0 0 7px rgba(74,222,128,0.6);animation:pg 1.5s infinite}
+
+/* ── TOAST ──────────────────────────────── */
+.toast{position:fixed;bottom:22px;right:22px;z-index:999;background:rgba(10,20,12,0.95);color:var(--tx);padding:11px 17px;border-radius:12px;font-size:13px;font-weight:500;border:1px solid var(--bd);box-shadow:0 8px 32px rgba(0,0,0,0.4);opacity:0;transform:translateY(10px);transition:all .3s;display:flex;align-items:center;gap:7px}
+.toast.show{opacity:1;transform:translateY(0)}
+
+/* ── SECTION DIVIDER ─────────────────────── */
+.sec-gap{display:flex;flex-direction:column;gap:18px}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <div class="h-inner">
+      <div class="logo">
+        <div class="logo-ic">💚</div>
+        <div>
+          <h1><span>may</span> · dashboard</h1>
+          <sub>Come sta May — visibile solo a te, Ema</sub>
+        </div>
+      </div>
+      <div class="hbar">
+        <div class="spill"><div class="dot" id="cdot"></div><span id="clbl">Connessione...</span></div>
+        <span class="lsync" id="lsync">—</span>
+      </div>
+    </div>
+  </header>
+
+  <!-- SOS ALERT -->
+  <div class="sos-ban" id="sosBan">
+    <div class="sos-ban-ico">🚨</div>
+    <div class="sos-ban-txt">
+      <h3>May ha attivato il Respiro Calmo</h3>
+      <p id="sosBanMsg">Ha bisogno di calmarsi — potrebbe essere un buon momento per mandarle un messaggio 💚</p>
+    </div>
+    <div class="sos-ban-t" id="sosBanTime"></div>
+  </div>
+
+  <!-- STATS -->
+  <div class="stats">
+    <div class="sc">
+      <div class="sc-lbl"><svg viewBox="0 0 24 24"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>Ultima emozione</div>
+      <div class="sc-emo" id="sLastEmo">—</div>
+      <div class="sc-sub" id="sLastLbl">In attesa di dati...</div>
+    </div>
+    <div class="sc">
+      <div class="sc-lbl"><svg viewBox="0 0 24 24"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>Ansia attuale</div>
+      <div class="sc-val cg" id="sAnx">—</div>
+      <div class="axm"><div class="axn" id="axn" style="left:50%"></div></div>
+      <div class="sc-sub" style="margin-top:10px" id="sAnxLbl">nessun dato</div>
+    </div>
+    <div class="sc">
+      <div class="sc-lbl"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>Questa settimana</div>
+      <div class="sc-val cg" id="sWeek">—</div>
+      <div class="sc-sub">voci nel diario</div>
+    </div>
+    <div class="sc">
+      <div class="sc-lbl"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>SOS questo mese</div>
+      <div class="sc-val cs" id="sSOS">—</div>
+      <div class="sc-sub">attivazioni respiro</div>
+    </div>
+  </div>
+
+  <!-- MAIN GRID -->
+  <div class="mg">
+    <div class="sec-gap">
+
+      <!-- CHART -->
+      <div class="pan">
+        <div class="pan-h">
+          <h2><svg viewBox="0 0 24 24"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>Andamento ansia</h2>
+          <div class="ctabs">
+            <button class="ctab on" onclick="setCR(7,this)">7g</button>
+            <button class="ctab" onclick="setCR(14,this)">14g</button>
+            <button class="ctab" onclick="setCR(30,this)">30g</button>
+          </div>
+        </div>
+        <div class="pan-b"><div class="ch-wrap"><canvas id="anxChart"></canvas></div></div>
+      </div>
+
+      <!-- FEED -->
+      <div class="pan">
+        <div class="pan-h">
+          <h2><span class="rtdot"></span>Diario in tempo reale</h2>
+          <div class="badge" id="fcnt">0 voci</div>
+        </div>
+        <div class="pan-b" style="padding:12px 13px">
+          <div class="ftabs">
+            <button class="ftab on" onclick="ff('all',this)">Tutto</button>
+            <button class="ftab" onclick="ff('sos',this)">🚨 SOS</button>
+            <button class="ftab" onclick="ff('hi',this)">😰 Alta ansia</button>
+          </div>
+          <div class="feed" id="feed"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="sec-gap">
+      <!-- EMO BREAKDOWN -->
+      <div class="pan">
+        <div class="pan-h"><h2><span class="ic">🦋</span>Emozioni frequenti</h2></div>
+        <div class="pan-b" style="padding:14px 18px"><div class="epi" id="epi"></div></div>
+      </div>
+
+      <!-- MEMORIES -->
+      <div class="pan">
+        <div class="pan-h">
+          <h2><span class="ic">🌻</span>Ultimi ricordi</h2>
+          <div class="badge" id="mcnt">0</div>
+        </div>
+        <div class="pan-b" style="padding:13px"><div class="msl" id="msl"></div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ════════════════════════════════════════════════════
+// ⚙️  STESSO URL E CHIAVE dell'app may.html
+// ════════════════════════════════════════════════════
+const SUPA_URL = 'INCOLLA_QUI_LA_TUA_SUPABASE_URL';
+const SUPA_KEY = 'INCOLLA_QUI_LA_TUA_ANON_KEY';
+// ════════════════════════════════════════════════════
+
+const db=supabase.createClient(SUPA_URL,SUPA_KEY);
+let allLogs=[],allMems=[],chart=null,cDays=7,filt='all';
+
+const ML={
+  '😊':'Felice','😌':'Calma','😰':'Ansiosa','😢':'Triste',
+  '😤':'Frustrata','😴':'Stanca','🥺':'Vulnerabile','🤗':'Mi manchi','🆘':'Respiro Calmo'
+};
+
+async function init(){
+  setConn(false);
+  await Promise.all([loadLogs(),loadMems()]);
+  setupRT();
+  setInterval(()=>document.getElementById('lsync').textContent='Aggiornato '+new Date().toLocaleTimeString('it-IT',{hour:'2-digit',minute:'2-digit'}),30000);
+}
+
+async function loadLogs(){
+  const since=new Date();since.setDate(since.getDate()-31);
+  const{data,error}=await db.from('mood_logs').select('*').gte('created_at',since.toISOString()).order('created_at',{ascending:false}).limit(200);
+  if(error){setConn(false);return}
+  allLogs=data||[];setConn(true);
+  updStats();renderFeed();renderChart(cDays);renderEpi();checkSOS();
+  document.getElementById('lsync').textContent='Aggiornato '+new Date().toLocaleTimeString('it-IT',{hour:'2-digit',minute:'2-digit'});
+}
+async function loadMems(){
+  const{data}=await db.from('memories').select('*').order('created_at',{ascending:false}).limit(10);
+  allMems=data||[];renderMems();
+}
+
+function setupRT(){
+  db.channel('rt_moods').on('postgres_changes',{event:'INSERT',schema:'public',table:'mood_logs'},p=>{
+    allLogs.unshift(p.new);updStats();renderFeed();renderChart(cDays);renderEpi();
+    if(p.new.sos_attivato)showSOS(p.new);
+    toast('💚 Nuovo aggiornamento da May!');
+  }).subscribe();
+  db.channel('rt_mems').on('postgres_changes',{event:'INSERT',schema:'public',table:'memories'},p=>{
+    allMems.unshift(p.new);renderMems();
+    toast('🌻 Nuovo ricordo aggiunto!');
+  }).subscribe();
+}
+
+function checkSOS(){
+  const r=allLogs.find(l=>l.sos_attivato);
+  if(r&&(Date.now()-new Date(r.created_at).getTime())<3600000)showSOS(r);
+}
+function showSOS(e){
+  document.getElementById('sosBan').classList.add('show');
+  document.getElementById('sosBanTime').textContent=fd(e.created_at);
+  setTimeout(()=>document.getElementById('sosBan').classList.remove('show'),30000);
+}
+
+function updStats(){
+  const l=allLogs[0];
+  if(l){
+    document.getElementById('sLastEmo').textContent=l.emozione_selezionata;
+    document.getElementById('sLastLbl').textContent=(ML[l.emozione_selezionata]||'')+' — '+fd(l.created_at);
+    const ax=l.livello_ansia;
+    document.getElementById('sAnx').textContent=ax+'/10';
+    document.getElementById('sAnxLbl').textContent=ax<=3?'Bassa 🟢':ax<=6?'Media 🟡':'Alta 🔴';
+    document.getElementById('axn').style.left=((ax-1)/9*100)+'%';
+    document.getElementById('sAnx').className='sc-val '+(ax<=3?'cg':ax<=6?'cs':'cr');
+  }
+  const w=new Date();w.setDate(w.getDate()-7);
+  document.getElementById('sWeek').textContent=allLogs.filter(l=>new Date(l.created_at)>w&&!l.sos_attivato).length;
+  const m=new Date();m.setDate(m.getDate()-30);
+  document.getElementById('sSOS').textContent=allLogs.filter(l=>l.sos_attivato&&new Date(l.created_at)>m).length;
+  document.getElementById('fcnt').textContent=allLogs.length+' voci';
+}
+
+function renderChart(days){
+  cDays=days;
+  const cut=new Date();cut.setDate(cut.getDate()-days);
+  const fil=allLogs.filter(l=>new Date(l.created_at)>cut&&!l.sos_attivato);
+  const byD={};
+  for(let i=days-1;i>=0;i--){const d=new Date();d.setDate(d.getDate()-i);byD[d.toLocaleDateString('it-IT',{day:'2-digit',month:'2-digit'})]=[]}
+  fil.forEach(l=>{const k=new Date(l.created_at).toLocaleDateString('it-IT',{day:'2-digit',month:'2-digit'});if(byD[k])byD[k].push(l.livello_ansia)});
+  const labels=Object.keys(byD);
+  const data=labels.map(k=>byD[k].length?(byD[k].reduce((a,b)=>a+b,0)/byD[k].length).toFixed(1):null);
+  if(chart)chart.destroy();
+  chart=new Chart(document.getElementById('anxChart').getContext('2d'),{
+    type:'line',
+    data:{labels,datasets:[{label:'Ansia media',data,borderColor:'#4ade80',backgroundColor:'rgba(74,222,128,0.07)',borderWidth:2,pointBackgroundColor:'#4ade80',pointBorderColor:'rgba(8,15,10,0.8)',pointBorderWidth:2,pointRadius:4,pointHoverRadius:6,tension:.4,fill:true,spanGaps:true}]},
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false},tooltip:{backgroundColor:'rgba(8,15,10,0.95)',borderColor:'rgba(74,222,128,0.3)',borderWidth:1,titleColor:'#e8f5ec',bodyColor:'#8fba9f',callbacks:{label:c=>'Ansia: '+c.parsed.y+'/10'}}},
+      scales:{x:{grid:{color:'rgba(255,255,255,0.03)'},ticks:{color:'#4a7a5a',font:{size:10}},border:{display:false}},
+              y:{min:0,max:10,grid:{color:'rgba(255,255,255,0.03)'},ticks:{color:'#4a7a5a',font:{size:10},stepSize:2},border:{display:false}}}}
+  });
+}
+function setCR(d,btn){document.querySelectorAll('.ctab').forEach(b=>b.classList.remove('on'));btn.classList.add('on');renderChart(d)}
+
+function ff(f,btn){filt=f;document.querySelectorAll('.ftab').forEach(b=>b.classList.remove('on'));btn.classList.add('on');renderFeed()}
+function renderFeed(){
+  let logs=[...allLogs];
+  if(filt==='sos')logs=logs.filter(l=>l.sos_attivato);
+  if(filt==='hi')logs=logs.filter(l=>l.livello_ansia>=7);
+  const el=document.getElementById('feed');
+  if(!logs.length){el.innerHTML='<div class="fe-empty">Nessuna voce in questa categoria 🌿</div>';return}
+  el.innerHTML=logs.slice(0,50).map(l=>{
+    const ax=l.livello_ansia;
+    const chip=ax<=3?'background:rgba(74,222,128,0.12);color:#4ade80':ax<=6?'background:rgba(251,191,36,0.12);color:#fbbf24':'background:rgba(248,113,113,0.12);color:#f87171';
+    return`<div class="fe${l.sos_attivato?' sos':''}">
+      <div class="fe-emo">${l.emozione_selezionata}</div>
+      <div class="fe-info">
+        <div class="fe-top">
+          <span class="fe-mood">${ML[l.emozione_selezionata]||l.emozione_selezionata}</span>
+          ${!l.sos_attivato?`<span class="fe-chip" style="${chip}">Ansia ${ax}</span>`:'<span class="fe-chip" style="background:rgba(248,113,113,0.15);color:#f87171">🚨 SOS</span>'}
+          <span class="fe-dt">${ft(l.created_at)}</span>
+        </div>
+        ${l.note_testo?`<p class="fe-note">"${esc(l.note_testo)}"</p>`:''}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function renderEpi(){
+  const c={};
+  allLogs.filter(l=>!l.sos_attivato).forEach(l=>{c[l.emozione_selezionata]=(c[l.emozione_selezionata]||0)+1});
+  const s=Object.entries(c).sort((a,b)=>b[1]-a[1]).slice(0,5);
+  const tot=s.reduce((x,e)=>x+e[1],0)||1;
+  document.getElementById('epi').innerHTML=s.length?s.map(([e,n])=>`
+    <div class="epi-row">
+      <span class="epi-e">${e}</span>
+      <div class="epi-info">
+        <div class="epi-top"><span>${ML[e]||e}</span><span>${n}×</span></div>
+        <div class="epi-bar-bg"><div class="epi-bar" style="width:${n/tot*100}%"></div></div>
+      </div>
+    </div>`).join('')
+  :'<p style="color:var(--tx3);font-size:13px;text-align:center;padding:10px">Nessun dato ancora 🌱</p>';
+}
+
+function renderMems(){
+  document.getElementById('mcnt').textContent=allMems.length;
+  document.getElementById('msl').innerHTML=allMems.slice(0,5).map(m=>`
+    <div class="msi">
+      <div class="msth">${m.media_type==='image'&&m.media_url?`<img src="${esc(m.media_url)}" onerror="this.outerHTML='<span>${m.emoji||'🌻'}</span>'">`:(m.emoji||'🌻')}</div>
+      <div class="msi-inf"><p>${esc(m.title)}</p><span>${fd(m.created_at)}</span></div>
+    </div>`).join('')||'<p style="color:var(--tx3);font-size:13px;text-align:center;padding:12px">Nessun ricordo ancora 🌱</p>';
+}
+
+function setConn(ok){
+  document.getElementById('cdot').className='dot '+(ok?'dot-on':'dot-off');
+  document.getElementById('clbl').textContent=ok?'Connesso':'Disconnesso';
+}
+
+let toastTm;
+function toast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');clearTimeout(toastTm);toastTm=setTimeout(()=>t.classList.remove('show'),4000)}
+
+function fd(s){return new Date(s).toLocaleDateString('it-IT',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'})}
+function ft(s){const d=new Date(s),n=new Date();return d.toDateString()===n.toDateString()?d.toLocaleTimeString('it-IT',{hour:'2-digit',minute:'2-digit'}):d.toLocaleDateString('it-IT',{day:'2-digit',month:'2-digit'})}
+function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')}
+
+init();
+</script>
+</body>
+</html>
